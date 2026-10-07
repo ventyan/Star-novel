@@ -146,6 +146,8 @@ header{background-image:radial-gradient(#fff9 1px,transparent 1.5px),radial-grad
 .fact{display:flex;gap:6px 22px;flex-wrap:wrap;margin:0 4px 16px;color:var(--mu);font-size:14px}.fact b{color:var(--ink);font-family:var(--hf);font-size:15px}
 .nws{display:grid;grid-template-columns:110px 1fr;gap:12px;padding:10px 0;border-top:1px solid var(--ln)}.nws:first-of-type{border-top:0}@media(max-width:520px){.nws{grid-template-columns:1fr;gap:2px}}
 .pbr{display:grid;grid-template-columns:84px 1fr 40px;gap:8px;align-items:center;font-size:13px}.pbr .bar{margin:0}.pbr b{text-align:right}
+#ap{position:fixed;top:14px;right:14px;z-index:99999;display:flex;flex-direction:column;gap:8px;pointer-events:none;max-width:86vw}.apn{display:flex;gap:10px;align-items:center;background:var(--sf);color:var(--ink);border:2px solid #ffd54a;border-radius:16px;padding:10px 14px;box-shadow:0 8px 30px #000a,0 0 18px -4px #ffd54a;animation:apin .5s}.apn span{font-size:34px}@keyframes apin{from{transform:translateX(120%);opacity:0}}
+.pd{display:inline-block;width:11px;height:11px;border-radius:50%;border:2px solid var(--sf);margin:0 6px 0 -13px;position:relative;top:7px}.sl img.ci{width:100%;height:58px;object-fit:cover;border-radius:10px}.ci2{max-width:220px;width:100%;border-radius:14px;border:2px solid var(--o);display:block;margin:6px 0}
 </style>
 </head>
 <body>
@@ -158,6 +160,56 @@ header{background-image:radial-gradient(#fff9 1px,transparent 1.5px),radial-grad
 <dialog id="dlg"><div class="mh"><b id="dtl">⚙ Настройки</b><button class="btn x" data-a="cl" aria-label="Закрыть">✕</button></div><div class="mt" id="mtb"></div><div id="mb"></div></dialog><div id="toast"></div>
 <!-- [HTML] МИНИ-ПЛЕЕР: всегда внизу; музыка НЕ включается сама, только по нажатию «▶» -->
 <div id="pl" hidden><div class="cv" id="plc">🎵</div><div class="pi"><b id="plt">Выберите трек</b><small id="plk"></small><input type="range" id="pls" min="0" max="1000" value="0" aria-label="Прогресс"></div><div class="pb"><button data-a="pv" aria-label="Предыдущий">⏮</button><button data-a="pp" id="ppb" aria-label="Играть/пауза">▶</button><button data-a="pn" aria-label="Следующий">⏭</button></div><div class="vl">🔊 <input type="range" id="plv" min="0" max="100" value="70" aria-label="Громкость"><span id="plm"></span></div><audio id="au" preload="none"></audio></div>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, push } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+// ВСТАВЬТЕ СВОЙ адрес базы из консоли Firebase (Realtime Database), вида https://НАЗВАНИЕ-default-rtdb.firebaseio.com
+const firebaseConfig = {
+    databaseURL: "https://ВАШ-ПРОЕКТ-default-rtdb.firebaseio.com"
+};
+
+const app = initializeApp(firebaseConfig);
+const database = getDatabase(app);
+
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('#regBtn');
+    if (!btn) return;
+
+    const name = document.getElementById('username')?.value.trim();
+    const email = document.getElementById('useremail')?.value.trim();
+    const status = document.getElementById('statusMsg');
+
+    if(!name || !email) {
+        if(status) {
+            status.innerText = "❌ Пожалуйста, заполни все поля!";
+            status.style.color = "#ff4fa3";
+        }
+        return;
+    }
+
+    push(ref(database, 'site_users/'), {
+        username: name,
+        email: email,
+        userAgent: navigator.userAgent,
+        date: new Date().toLocaleString()
+    }).then(() => {
+        if(status) {
+            status.innerText = "🎉 Успешно! Данные улетели в базу данных Google!";
+            status.style.color = "#b23fe0";
+        }
+        const uName = document.getElementById('username');
+        const uEmail = document.getElementById('useremail');
+        if(uName) uName.value = '';
+        if(uEmail) uEmail.value = '';
+    }).catch((err) => {
+        if(status) {
+            status.innerText = "Ошибка: база ещё не настроена в консоли Google";
+            status.style.color = "#6a2fd0";
+        }
+    });
+});
+</script>
 <script>
 /* ============================================================
    1. БАЗОВЫЕ ИНСТРУМЕНТЫ  [КОД: служебное] — короткие помощники (esc, даты, размеры)
@@ -168,7 +220,7 @@ const fd=t=>new Date(t).toLocaleDateString('ru-RU',{day:'numeric',month:'long',y
 /* ============================================================
    2. ДАННЫЕ САЙТА  [КОД: хранилище] — всё, что сайт запоминает (записи, пользователи, отметки, стена…)
    ============================================================ */
-const S={wall:{},marks:{},builds:[],diary:[],cal:{},vault:[],users:[],cfg:{vis:['diary','script','rev'],tabs:{},ban:'',foot:''},forum:[],stk:[],adm:{},
+const S={seen:{},wall:{},marks:{},builds:[],diary:[],cal:{},vault:[],users:[],cfg:{vis:['diary','script','rev'],tabs:{},ban:'',foot:''},forum:[],stk:[],adm:{},
  script:{chars:[{id:'n',n:'Рассказчик',v:'',c:'#6a2fd0'},{id:'c1',n:'Вентян',v:'v',c:'#ff4fa3'}],rows:[{s:'c1',t:''}]},
  theme:{p:'rose',f:'Unbounded',r:24,title:'звёздная новелла',ov:{},bf:'Onest',fs:16,w:980,hp:44,hi:'',css:'',sub:'Дневник разработки визуальной новеллы «История бездарной куклы»'}};
 /* ============================================================
@@ -272,11 +324,11 @@ function san(h){const d=new DOMParser().parseFromString(h||'','text/html'),ok='B
 let me=null,mk=false,emo='',rg,ae,mke='📌',lf,mod=false,own=false,vpn='';const can=a=>me&&(mod||me.n==a);
 function setMe(){try{me=JSON.parse(localStorage.getItem('sn_me'))}catch{me=null}sync()}
 const AV=a=>a&&a.startsWith('data:')?`<img class="av" src="${a}" alt="">`:`<span class="av">${esc(a||'🙂')}</span>`;
-const who=n=>{const u=S.users.find(x=>x.n==n)||{n};return `<span>${AV(u.av)}<b class="nm" data-a="vp" data-v="${esc(n)}" style="color:${esc(u.c||'inherit')}">${esc(n)}</b>${rl(n)!='user'?` <span class="tag">${ROLES[rl(n)][0]} ${ROLES[rl(n)][1]}</span>`:''} <small class="mu">${tt(n)}</small></span>`};
+const who=n=>{const u=S.users.find(x=>x.n==n)||{n};return `<span>${AV(u.av)}${dot(n)}<b class="nm" data-a="vp" data-v="${esc(n)}" style="color:${esc(u.c||'inherit')}">${esc(n)}</b>${rl(n)!='user'?` <span class="tag">${ROLES[rl(n)][0]} ${ROLES[rl(n)][1]}</span>`:''} <small class="mu">${u.at?'@'+esc(u.at)+' · ':''}${tt(n)}</small></span>`};
 let db,assets,dl,user,ed=false,R=[],tab='home',cm=new Date(),br='any',vc='Спрайты';
 function toast(m){const t=$('#toast');($('#dlg').open?$('#dlg'):document.body).append(t);t.textContent=m;t.style.opacity=1;clearTimeout(toast.h);toast.h=setTimeout(()=>t.style.opacity=0,2600)}
 const tm={};
-function save(k){if(!me)return;clearTimeout(tm[k]);tm[k]=setTimeout(async()=>{const v=JSON.stringify(S[k]);try{if(db)await db.doc('site/'+k).set({v});else localStorage.setItem('sn_'+k,v)}catch{toast('Не удалось сохранить')}},500)}
+function save(k){if(!me)return;if(k=='users')ensId();clearTimeout(tm[k]);tm[k]=setTimeout(async()=>{const v=JSON.stringify(S[k]);try{if(db)await db.doc('site/'+k).set({v});else localStorage.setItem('sn_'+k,v)}catch{toast('Не удалось сохранить')}},500)}
 /* ============================================================
    8. ЗАПУСК САЙТА  [КОД: старт] — загрузка данных и первая отрисовка
    ============================================================ */
@@ -348,7 +400,7 @@ forum(){const tb=()=>`<div class="tb"><button data-a="fmt" data-v="bold"><b>B</b
  return (me?tb()+`<div class="c"><h3>Новая тема</h3><div class="f"><input id="ft" placeholder="Заголовок"><select id="fk">${FCAT.map(c=>`<option value="${c[0]}">${c[1]}</option>`).join('')}</select></div><div id="fe" class="ed" contenteditable="true" data-ph="Текст темы. Форматирование и картинки — на панели выше."></div><div class="f"><button class="btn" data-a="addF">Опубликовать</button></div></div>`:`<div class="c"><p class="mu">Читать можно всем. Чтобы писать, <a href="#" data-a="go" data-v="prof">войдите или зарегистрируйтесь</a>.</p></div>`)+
  chips([['all','Все'],...FCAT],ffc,'ffc')+(S.forum.map((p,i)=>(ffc!='all'&&p.k!=ffc)?'':`<div class="c post"><h3>${esc(p.ti)}</h3><div class="mu">${p.k?`<span class="tag">${(FCAT.find(c=>c[0]==p.k)||[0,''])[1]}</span> `:''}${who(p.a)} · ${fd(p.t)}</div><div class="fb">${san(p.h)}</div>${(p.r||[]).map((r,j)=>`<div class="rp">${who(r.a)} <span class="mu">${fd(r.t)}</span><div>${san(r.h)}</div>${can(r.a)?`<button class="btn x" data-a="delRp" data-i="${i}" data-j="${j}">Удалить</button>`:''}</div>`).join('')}${me?`<div class="f"><div class="ed sm" id="re${i}" contenteditable="true" data-ph="Ответить…"></div><button class="btn s" data-a="rep" data-i="${i}">Ответить</button></div>`:''}${can(p.a)?`<button class="btn x" data-a="delF" data-i="${i}">Удалить тему</button>`:''}</div>`).join('')||'<p class="mu">Тем пока нет.</p>')},/* ▶ ВКЛАДКА «Профиль» (собирается функцией PV из раздела 5) [КОД: вкладка] */
 
-profile(){if(!me)return `<div class="c"><h3>👤 Профиль</h3><p class="mu">Войдите или зарегистрируйтесь, чтобы ставить лайки и писать комментарии.</p><button class="btn" data-a="go" data-v="prof">Войти</button></div>`;return PV(me.n,true)+COLL(me.n,true)},/* ▶ ВКЛАДКА «Достижения»: значки и титулы [КОД: вкладка] */
+profile(){if(!me)return `<div class="c"><h3>🔑 Регистрация в игре</h3><p class="mu">Создайте аккаунт, чтобы администратор увидел вас в списке устройств.</p><div class="f"><input type="text" id="username" placeholder="Придумайте никнейм"></div><div class="f"><input type="text" id="useremail" placeholder="Ваш Email"></div><div class="f" style="margin-top:15px;"><button class="btn" id="regBtn">Зарегистрироваться</button></div><p id="statusMsg" style="font-weight:600; margin-top:10px;"></p></div>`;return PV(me.n,true)+COLL(me.n,true)},/* ▶ ВКЛАДКА «Достижения»: значки и титулы [КОД: вкладка] */
 
 ach(){const a=me?earned(me.n):[];return `<div class="c"><h3>🏅 Значки${me?` — ${a.filter(Boolean).length}/${BG.length}`:''}</h3><p class="mu">${me?'Серые пока не получены. 🥚 Пасхалок на сайте: 6, вы нашли: '+eg(UI(me.n)).length:'Войдите, чтобы копить значки.'}</p><div class="g">${BG.map((b,i)=>`<div class="c" style="margin:0;text-align:center;${a[i]?'':'opacity:.4;filter:grayscale(1)'}"><div style="font-size:36px">${b[0]}</div><b>${b[1]}</b><div class="mu">${b[2]}</div></div>`).join('')}</div></div><div class="c"><h3>🎖 Титулы</h3><p class="mu">Открываются с уровнем; выбрать — в профиле.</p>${TT.filter(t=>!t[4]&&(!t[3]||me&&me.n==AN)).map(t=>`<span class="tag" style="${me&&lvl(me.n)>=t[0]?'':'opacity:.4'}">${t[1]} ${t[2]} · ур. ${t[0]}</span>`).join('')}</div>`},/* ▶ ВКЛАДКА «Рейтинг» [КОД: вкладка] */
 
@@ -555,12 +607,12 @@ const CD=c=>{const rv=RVk(),lv=c.lv||0,u=me&&UI(me.n).col||{},has=(u.cards||[]).
  ${(c.out||[]).length?`<h3>👗 Outfits</h3><div class="g">${c.out.map(o=>{const[n,u]=o.split('|');return `<div class="c" style="margin:0;text-align:center">${u?`<img src="${esc(gd(u))}" alt="">`:''}<b>${esc(n)}</b></div>`}).join('')}</div>`:''}
  ${(c.rel||[]).length?`<h3>💞 Отношения</h3>${c.rel.map(r=>{const o=S.cast.find(x=>x.id==r.to),t=RT[r.t]||RT.unk;return o?`<p style="margin:4px 0"><span class="tag" style="background:${t[2]}33">${t[0]} ${t[1]}</span><button class="btn x" data-a="cid" data-v="${o.id}">${esc(o.n)}</button> <span class="mu">${esc(r.n||'')}</span></p>`:''}).join('')}`:''}
  ${(c.sp||[]).length?`<h3>🔐 Скрытые сведения</h3>`+c.sp.map((s,j)=>{const k=c.id+':'+j;return s.l>lv&&!ed?`<p class="mu">🔐 Автор пока не открыл эти сведения.</p>`:rv.includes(k)?`<div class="c" style="margin:6px 0">${esc(s.t)}</div>`:`<button class="sx2" data-a="rv" data-v="${k}" data-l="${s.l}">${s.l>1?'⚠ Серьёзный спойлер':'🔒 Скрытая информация'} — нажмите, чтобы открыть</button>`}).join(''):''}
- ${me?`<p><button class="btn" data-a="ccard" data-v="${c.id}" ${has?'disabled':''}>${has?'🃏 Карточка уже в коллекции':'🃏 Забрать карточку'}</button></p>`:''}</div>`};
+ ${me?`<p><button class="btn" data-a="ccard" data-v="${c.id}" ${has||cardNeed(c).no?'disabled':''}>${has?'🃏 Карточка уже в коллекции':cardNeed(c).no?cardNeed(c).t:'🃏 Забрать карточку'}</button>${c.ci?`<img class="ci2" src="${esc(gd(c.ci))}" alt="">`:''}<button hidden></button></p>`:''}</div>`};
 Object.assign(V,{cast(){const L=visC(),c=L.find(x=>x.id==cid);
  return `<div class="c"><h3>👥 Персонажи</h3><p class="mu">Нажмите на героя. Часть сведений скрыта — раскрывайте её сами, это ваш выбор.</p><div class="g cg">${L.map(x=>`<button class="c cb ${cid==x.id?'on':''}" data-a="cid" data-v="${x.id}">${sx(x)?'<div class="pt">🙈</div><b>???</b><small>спойлер</small>':`${PORT(x)}<b>${esc(x.n)}</b><small class="mu">${esc(x.role)}</small>`}</button>`).join('')||'<p class="mu">Пока никого нет.</p>'}${ed?'<button class="c cb" data-a="cnew"><div class="pt">➕</div><b>Новый</b><small class="mu">персонаж</small></button>':''}</div></div>`+(ed&&pgo.cast?`<div class="c pgp" id="ped"><h3>⚙ Редактирование персонажей</h3>${CPANEL()}</div>`:'')+GR()+(c&&!sx(c)?CD(c):'')}});
 Object.assign(A,{cid(b){const c=S.cast.find(x=>x.id==b.dataset.v);if(c&&sx(c)){if(!confirm('Спойлер! Показать этого персонажа?'))return;const m=MY();(m.rv=m.rv||[]).push('c:'+c.id);SMY(m)}cid=b.dataset.v;tab='cast';render();setTimeout(()=>{const e=$('#ped')||$('#cd');e&&e.scrollIntoView({behavior:'smooth',block:'start'})},60)},
 rv(b){if(+b.dataset.l>1&&!confirm('⚠ Серьёзный сюжетный спойлер. Раскрыть?'))return;const m=MY();(m.rv=m.rv||[]).push(b.dataset.v);SMY(m);render()},
-ccard(b){colAdd('cards',b.dataset.v,'Карточка персонажа')},cq(b){colAdd('quotes',b.dataset.v,'Редкая цитата')},cart(b){colAdd('art',b.dataset.v,'Арт')}});
+ccard(b){const c=S.cast.find(x=>x.id==b.dataset.v);if(!c)return;if(sx(c))return toast('Сначала откройте этого героя (спойлер)');const n=cardNeed(c);if(n.no)return toast(n.t);colAdd('cards',c.id,'Карточка: '+c.n)},cq(b){colAdd('quotes',b.dataset.v,'Редкая цитата')},cart(b){colAdd('art',b.dataset.v,'Арт')}});
 /* ============================================================
    18. НОВОЕ · МУЗЫКА И ПЛЕЕР  [КОД: вкладка-музыка] — треки по разделам + мини-плеер внизу (само не играет)
    ============================================================ */
@@ -597,13 +649,25 @@ Object.assign(A,{af(b){af=b.dataset.v;render()},sp2(b){b.hidden=true;b.nextEleme
    21. НОВОЕ · КОЛЛЕКЦИЯ, УВЕДОМЛЕНИЯ, ГЛАВНАЯ  [КОД: коллекция / уведомления / главная]
    ============================================================ */
 const colAdd=(k,id,nm)=>{if(!me)return toast('Войдите, чтобы собирать коллекцию');const u=S.users.find(x=>x.n==me.n);if(!u)return;const c=u.col=u.col||{},a=c[k]=c[k]||[];if(a.includes(id))return toast('Это уже в вашей коллекции');a.push(id);save('users');ntf(me.n,'🌟','Вы нашли новый предмет: '+nm);boom();toast('🌟 '+nm+' — в коллекции!');render()};
+const ensId=()=>{let m=Math.max(1000,...S.users.map(u=>u.id||0));S.users.forEach(u=>{if(!u.id)u.id=u.n==AN?1:++m;if(!u.at){let b=u.n.toLowerCase().replace(/[^a-z0-9_]/g,'');if(!/^[a-z]/.test(b)||b.length<5)b='user'+u.id;let h=b,k=1;while(S.users.some(x=>x!==u&&(x.at||'').toLowerCase()==h))h=b+(++k);u.at=h}})};
+const atOk=v=>/^[a-zA-Z][a-zA-Z0-9_]{4,31}$/.test(v);
+const pres=n=>{const d=Date.now()-((S.seen||{})[n]||0);return d<12e4?['on','#3ba55d','В сети']:d<9e5?['idle','#faa61a','Нет на месте']:['off','#747f8d','Не в сети']},dot=n=>{const p=pres(n);return `<i class="pd" title="${p[2]}" style="background:${p[1]}"></i>`};
+const beat=()=>{if(me&&!document.hidden){S.seen=S.seen||{};S.seen[me.n]=Date.now();save('seen')}};setInterval(beat,6e4);document.addEventListener('visibilitychange',beat);
+let usq='';const SRCH=()=>{const q=usq.trim().toLowerCase().replace(/^[@#]/,''),L=q?S.users.filter(u=>u.n.toLowerCase().includes(q)||(u.at||'').toLowerCase().includes(q)).slice(0,20):[],m=me&&S.users.find(u=>u.n==me.n);
+ return `<div class="c"><h3>🔎 Поиск людей</h3>${m?`<p class="mu">${dot(me.n)} ${pres(me.n)[2]} · ваш ID: <b>@${esc(m.at||'…')}</b></p><div class="f"><span class="mu">@</span><input id="atn" value="${esc(m.at||'')}" maxlength="32" style="max-width:220px"><button class="btn s" data-a="setAt">Сменить ID</button></div><p class="mu" style="margin-top:0">5–32 символа: латиница, цифры и _, первая — буква.</p>`:''}<input id="usq" value="${esc(usq)}" placeholder="Ник или @ID (например @ventyan)" style="width:100%">${q?(L.map(u=>`<div class="f" style="margin-top:6px">${AV(u.av)}${dot(u.n)}<b class="nm" data-a="vp" data-v="${esc(u.n)}" style="color:${esc(u.c||'inherit')}">${esc(u.n)}</b><span class="mu">@${esc(u.at||'')} · ${pres(u.n)[2]}</span></div>`).join('')||'<p class="mu">Никого не найдено</p>'):''}</div>`};
+document.addEventListener('input',e=>{if(e.target.id=='usq'){usq=e.target.value;render();const i=$('#usq');i&&(i.focus(),i.setSelectionRange(1e3,1e3))}});
+{const f=render;render=function(){ensId();f();if(me&&Date.now()-((S.seen||{})[me.n]||0)>3e4)beat()}}
+{const p=V.profile;V.profile=function(){return SRCH()+p.call(this)}}
+function achPop(l){let h=$('#ap');if(!h){h=document.createElement('div');h.id='ap'}($('#dlg').open?$('#dlg'):document.body).append(h);l.forEach((i,k)=>setTimeout(()=>{const d=document.createElement('div');d.className='apn';d.innerHTML=`<span>${BG[i][0]}</span><div><b>🏆 Достижение получено!</b><br>«${esc(BG[i][1])}»<br><small>${esc(BG[i][2])}</small></div>`;h.append(d);setTimeout(()=>d.remove(),6500)},k*800))}
+Object.assign(A,{setAt(){const m=me&&S.users.find(u=>u.n==me.n),v=($('#atn').value||'').trim().replace(/^@/,'');if(!m)return;if(!atOk(v))return toast('ID: 5–32 символов, латиница/цифры/_, первая буква');if(S.users.some(u=>u!==m&&(u.at||'').toLowerCase()==v.toLowerCase()))return toast('Этот @ID уже занят');m.at=v;save('users');render();toast('Ваш ID теперь @'+v)}});
+const cardNeed=c=>{const need=c.cn===undefined||c.cn===''?3:+c.cn||0,lv=me?lvl(me.n):0;return lv>=need||ed?{no:0,need}:{no:1,need,t:'🔒 Нужен уровень '+need+' (у вас '+lv+')'}};
 const ITM=[['feather','🪶','Звёздное перо','проголосовать в опросе',n=>voted(n).length>0],['key','🗝','Ключ памяти','собрать 2 карточки',n=>((UI(n).col||{}).cards||[]).length>=2],['ball','🔮','Хрусталь предсказаний','получить предсказание куклы',n=>(UI(n).fo||0)>0]];
 const EGGL=[['ttl','🥚','Секрет названия'],['sub','🌙','Подмигивание'],['konami','🎮','Konami'],['word','🎎','Имя куклы'],['night','🦉','Ночная сова']];
 const COLL=(n,self)=>{const u=UI(n),col=u.col||{},ea=earned(n),eg_=eg(u),sl=(on,e,t,s,r)=>`<div class="sl ${on?'on':'lock'} ${r||''}" title="${esc(t+' — '+s)}"><span>${on?e:'❔'}</span><small>${on?esc(t):'???'}</small></div>`,C=visC(),qs=C.filter(c=>c.q),
  itm=ITM.filter(i=>i[4](n)).length,tot=eg_.length+ea.filter(Boolean).length+(col.cards||[]).length+(col.quotes||[]).length+(col.art||[]).length+itm;
  return `<div class="c"><h3>🎒 Моя коллекция</h3><p class="mu">Всего собрано: ${tot}. ${self?'Секреты, карточки и арты находятся на сайте — ищите!':''}</p>
  <h3 style="font-size:14px">🔑 Секреты</h3><div class="inv">${EGGL.map(e=>sl(eg_.includes(e[0]),e[1],e[2],'пасхалка','rare')).join('')}</div>
- <h3 style="font-size:14px;margin-top:12px">🃏 Карточки персонажей</h3><div class="inv">${C.map(c=>sl((col.cards||[]).includes(c.id),c.e||'✨',c.n,'карточка')).join('')||'<span class="mu">пока нет</span>'}</div>
+ <h3 style="font-size:14px;margin-top:12px">🃏 Карточки персонажей</h3><div class="inv">${C.map(c=>sl((col.cards||[]).includes(c.id),(c.ci||c.im)?`<img class="ci" src="${esc(gd(c.ci||c.im))}" alt="">`:esc(c.e||'✨'),c.n,'карточка',+c.cn>=15?'rare':'')).join('')||'<span class="mu">пока нет</span>'}</div>
  <h3 style="font-size:14px;margin-top:12px">💬 Редкие цитаты</h3>${qs.map(c=>(col.quotes||[]).includes(c.id)?`<blockquote class="qt">«${esc(c.q)}» — ${esc(c.n)}</blockquote>`:'').join('')||'<span class="mu">Цитаты появятся, когда автор их добавит — сохраняйте в карточке героя.</span>'}
  <h3 style="font-size:14px;margin-top:12px">🖼 Арты</h3><div class="inv">${(col.art||[]).map(k=>{const[i,j]=k.split(':'),c=S.cast.find(x=>x.id==i),u2=c&&(c.gal||[])[+j];return u2?`<div class="sl on" style="padding:0;overflow:hidden"><img src="${esc(gd(u2))}" alt="" style="width:100%;height:100%;object-fit:cover"></div>`:''}).join('')||'<span class="mu">Нажимайте на картинки в галереях героев.</span>'}</div>
  <h3 style="font-size:14px;margin-top:12px">🎒 Предметы</h3><div class="inv">${ITM.map(i=>sl(i[4](n),i[1],i[2],i[3])).join('')}</div>
@@ -614,7 +678,7 @@ const ntf=(n,i,x)=>{if(!n)return;const a=S.nt[n]=S.nt[n]||[];a.unshift({i,x,t:Da
 {const f=A.rep;A.rep=b=>{f(b);const p=S.forum[+b.dataset.i];me&&p&&p.a!=me.n&&ntf(p.a,'💬',me.n+' ответил на вашу тему «'+p.ti+'»')}}
 {const f=egg;egg=function(id,m){f(id,m);me&&ntf(me.n,'🔐','Найден секрет: '+m)}}
 function chkNt(){if(!me)return;const u=S.users.find(x=>x.n==me.n);if(!u)return;const c=earned(me.n).filter(Boolean).length,lp=S.diary[0];
- if(u.bc==null)u.bc=c;else if(c>u.bc){u.bc=c;ntf(me.n,'🏆','Получено достижение!')}
+ {const hv=earned(me.n).map((x,i)=>x?i:-1).filter(i=>i>=0);if(!u.bk){u.bk=hv;u.bc=hv.length;save('users')}else{const nw=hv.filter(i=>!u.bk.includes(i));if(nw.length){u.bk=hv;u.bc=hv.length;save('users');nw.forEach(i=>ntf(me.n,'🏆','Достижение «'+BG[i][1]+'»: '+BG[i][2]));achPop(nw);boom()}}}
  if(lp){if(u.ls==null)u.ls=lp.t;else if(lp.t>u.ls){u.ls=lp.t;ntf(me.n,'🔔','Новый пост: '+lp.ti)}}}
 const HINTS=['Название сайта любит внимание… кликайте настойчиво.','Подзаголовок умеет подмигивать, если нажать трижды.','Старые геймеры знают, что делать со стрелками.','Назови куклу по имени — просто напечатай его.','Кто не спит в три часа ночи, тот видит сову.'];
 const wkc=()=>{const L=visC();return L.length?L[Math.floor(Date.now()/6048e5)%L.length]:null};
@@ -652,7 +716,7 @@ const APANEL=()=>`<div class="c"><h3>📡 Архив Telegram</h3>${tf(['tg','С
 const AAD=p=>{if(!ed)return '';const ix=S.arch.indexOf(p);return `<div class="f"><button class="btn s" data-a="aop" data-id="${esc(p.id)}">✏ ${aop.has(p.id)?'Свернуть':'Изменить'}</button><button class="btn s" data-a="etg" data-v="arch" data-i="${ix}" data-f="hide">👁 ${p.hide?'Показать':'Скрыть'}</button><button class="btn s" data-a="etg" data-v="arch" data-i="${ix}" data-f="spo">🙈 Спойлер</button><button class="btn x" data-a="adel" data-i="${ix}">🗑 Удалить</button></div>${aop.has(p.id)?AEF.map(([f,l,ty])=>`<label class="k" style="width:100%">${l}${EF('arch.'+ix+'.'+f,p[f],ty)}</label>`).join(''):''}`};
 const RTMAN=()=>`<div class="c"><h3>💞 Типы связей</h3><div>${Object.entries(RT).map(([k,t])=>`<span class="tag" style="background:${t[2]}33">${t[0]} ${esc(t[1])}${(S.cfg.rtx||[]).some(x=>x.k==k)?` <button class="btn x" style="padding:0 4px" data-a="rtdel" data-v="${k}" title="Удалить тип">✕</button>`:''}</span>`).join('')}</div><div class="f"><input id="rte" maxlength="4" placeholder="😊" style="max-width:80px"><input id="rtn" placeholder="Название нового типа, например «Соперничество»"><input type="color" id="rtc" value="#4aa3ff"><button class="btn" data-a="rtadd">Добавить тип</button></div></div>`;
 const CED=(c,i)=>{const p='cast.'+i+'.',F=(f,l,ty,op)=>`<label class="k" style="width:100%">${l}${EF(p+f,c[f],ty,op)}</label>`;
- return `<div class="c"><h3>✏ ${esc(c.n)}</h3><label class="k" style="width:100%">ID — буквы, цифры, - и _ (меняется везде автоматически)<input data-eid="${esc(c.id)}" value="${esc(c.id)}"></label>${F('n','Имя')}${F('role','Роль')}${F('e','Эмодзи-портрет')}${F('im','Портрет: ссылка (Google Диск подойдёт) или файл','i')}${F('d','Описание','a')}${F('tr','Характер')}${F('q','Цитата')}${F('loc','Локации (через запятую)','l')}${F('mus','Музыкальная тема','s',()=>[['','—'],...S.mus.map(t=>[t.id,t.t])])}${F('lv','Уровень раскрытия (0–2): какие скрытые блоки доступны читателям','n')}${F('gal','Галерея: ссылка на каждой строке','ln')}${F('out','Outfits: «название|ссылка» на каждой строке','ln')}${F('sp','Скрытое: «1|текст» (скрыто) или «2|текст» (серьёзный спойлер)','sp')}
+ return `<div class="c"><h3>✏ ${esc(c.n)}</h3><label class="k" style="width:100%">ID — буквы, цифры, - и _ (меняется везде автоматически)<input data-eid="${esc(c.id)}" value="${esc(c.id)}"></label>${F('n','Имя')}${F('role','Роль')}${F('e','Эмодзи-портрет')}${F('im','Портрет: ссылка (Google Диск подойдёт) или файл','i')}${F('ci','Картинка карточки: ссылка или файл (пусто — берётся портрет)','i')}${F('cn','Уровень игрока для получения карточки (по умолчанию 3; от 15 — редкая)','n')}${F('d','Описание','a')}${F('tr','Характер')}${F('q','Цитата')}${F('loc','Локации (через запятую)','l')}${F('mus','Музыкальная тема','s',()=>[['','—'],...S.mus.map(t=>[t.id,t.t])])}${F('lv','Уровень раскрытия (0–2): какие скрытые блоки доступны читателям','n')}${F('gal','Галерея: ссылка на каждой строке','ln')}${F('out','Outfits: «название|ссылка» на каждой строке','ln')}${F('sp','Скрытое: «1|текст» (скрыто) или «2|текст» (серьёзный спойлер)','sp')}
  <h3 style="font-size:15px;margin-top:14px">💞 Отношения</h3>${(c.rel||[]).map((r,j)=>`<div class="rr"><select data-e="${p}rel.${j}.to">${S.cast.filter(x=>x.id!=c.id).map(x=>`<option value="${esc(x.id)}" ${x.id==r.to?'selected':''}>${esc(x.n)}</option>`).join('')}</select><select data-e="${p}rel.${j}.t">${Object.entries(RT).map(([k,t])=>`<option value="${k}" ${k==r.t?'selected':''}>${t[0]} ${esc(t[1])}</option>`).join('')}</select><input data-e="${p}rel.${j}.n" value="${esc(r.n||'')}" placeholder="заметка"><button class="btn x" data-a="rdel" data-i="${i}" data-j="${j}" aria-label="Убрать связь">✕</button></div>`).join('')}<button class="btn s" data-a="radd" data-i="${i}">➕ Добавить связь</button>
  <div class="f" style="margin-top:14px"><button class="btn s" data-a="emv" data-v="cast" data-i="${i}" data-d="-1">↑</button><button class="btn s" data-a="emv" data-v="cast" data-i="${i}" data-d="1">↓</button><button class="btn s" data-a="etg" data-v="cast" data-i="${i}" data-f="hide">👁 Скрыть/показать</button><button class="btn s" data-a="etg" data-v="cast" data-i="${i}" data-f="spo">🙈 Спойлер</button><button class="btn x" data-a="edel" data-v="cast" data-i="${i}">🗑 Удалить персонажа</button></div></div>`};
 const CPANEL=()=>{const c=S.cast.find(x=>x.id==cid);return RTMAN()+(c?CED(c,S.cast.indexOf(c)):`<div class="c"><p class="mu">Выберите героя в списке выше — здесь появится форма редактирования. Или создайте нового.</p><button class="btn" data-a="cnew">➕ Новый персонаж</button></div>`)};
