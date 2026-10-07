@@ -160,54 +160,24 @@ header{background-image:radial-gradient(#fff9 1px,transparent 1.5px),radial-grad
 <dialog id="dlg"><div class="mh"><b id="dtl">⚙ Настройки</b><button class="btn x" data-a="cl" aria-label="Закрыть">✕</button></div><div class="mt" id="mtb"></div><div id="mb"></div></dialog><div id="toast"></div>
 <!-- [HTML] МИНИ-ПЛЕЕР: всегда внизу; музыка НЕ включается сама, только по нажатию «▶» -->
 <div id="pl" hidden><div class="cv" id="plc">🎵</div><div class="pi"><b id="plt">Выберите трек</b><small id="plk"></small><input type="range" id="pls" min="0" max="1000" value="0" aria-label="Прогресс"></div><div class="pb"><button data-a="pv" aria-label="Предыдущий">⏮</button><button data-a="pp" id="ppb" aria-label="Играть/пауза">▶</button><button data-a="pn" aria-label="Следующий">⏭</button></div><div class="vl">🔊 <input type="range" id="plv" min="0" max="100" value="70" aria-label="Громкость"><span id="plm"></span></div><audio id="au" preload="none"></audio></div>
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, push } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-
-// ВСТАВЬТЕ СВОЙ адрес базы из консоли Firebase (Realtime Database), вида https://НАЗВАНИЕ-default-rtdb.firebaseio.com
-const firebaseConfig = {
-    databaseURL: "https://ВАШ-ПРОЕКТ-default-rtdb.firebaseio.com"
-};
-
-const app = initializeApp(firebaseConfig);
-const database = getDatabase(app);
-
-document.addEventListener('click', (e) => {
-    const btn = e.target.closest('#regBtn');
-    if (!btn) return;
-
-    const name = document.getElementById('username')?.value.trim();
-    const email = document.getElementById('useremail')?.value.trim();
-    const status = document.getElementById('statusMsg');
-
-    if(!name || !email) {
-        if(status) {
-            status.innerText = "❌ Пожалуйста, заполни все поля!";
-            status.style.color = "#ff4fa3";
-        }
-        return;
-    }
-
-    push(ref(database, 'site_users/'), {
-        username: name,
-        email: email,
-        userAgent: navigator.userAgent,
-        date: new Date().toLocaleString()
-    }).then(() => {
-        if(status) {
-            status.innerText = "🎉 Успешно! Данные улетели в базу данных Google!";
-            status.style.color = "#b23fe0";
-        }
-        const uName = document.getElementById('username');
-        const uEmail = document.getElementById('useremail');
-        if(uName) uName.value = '';
-        if(uEmail) uEmail.value = '';
-    }).catch((err) => {
-        if(status) {
-            status.innerText = "Ошибка: база ещё не настроена в консоли Google";
-            status.style.color = "#6a2fd0";
-        }
-    });
+<script>
+/* ===== [КОД: онлайн-база] Firebase Realtime Database через обычные запросы (без SDK) =====
+   Адрес базы — ваш. Сайт хранит данные в ветках: site/<раздел> и reviews/<id>; регистрации в форме — в site_users. */
+const FBURL="https://star-novel-6c2f2-default-rtdb.firebaseio.com";
+const FBX=async(p,m,b)=>{const r=await fetch(FBURL+'/'+p+'.json',{method:m||'GET',body:b===undefined?undefined:JSON.stringify(b)});if(!r.ok)throw new Error('fb '+r.status);return r.json()};
+const FB={doc:p=>({id:p.split('/').pop(),
+  async get(){const v=await FBX(p);return{id:p.split('/').pop(),exists:v!==null,data:()=>v}},
+  async set(o){await FBX(p,'PUT',o)},async delete(){await FBX(p,'DELETE')}}),
+ collection:p=>({async get(){const v=(await FBX(p))||{};return{docs:Object.entries(v).map(([id,o])=>({id,exists:true,data:()=>o}))}}})};
+async function fbInit(){try{await FBX('site','GET');return FB}catch{return null}}
+document.addEventListener('click',e=>{
+ const btn=e.target.closest('#regBtn');if(!btn)return;
+ const name=document.getElementById('username')?.value.trim(),email=document.getElementById('useremail')?.value.trim(),st=document.getElementById('statusMsg');
+ const say=(t,c)=>{if(st){st.innerText=t;st.style.color=c}};
+ if(!name||!email)return say('❌ Пожалуйста, заполни все поля!','#ff4fa3');
+ FBX('site_users','POST',{username:name,email,userAgent:navigator.userAgent,date:new Date().toLocaleString()})
+  .then(()=>{say('🎉 Успешно! Данные сохранены в базе.','#b23fe0');document.getElementById('username').value='';document.getElementById('useremail').value=''})
+  .catch(()=>say('Ошибка: не удалось записать в базу (проверьте правила в консоли Firebase)','#6a2fd0'));
 });
 </script>
 <script>
@@ -328,12 +298,16 @@ const who=n=>{const u=S.users.find(x=>x.n==n)||{n};return `<span>${AV(u.av)}${do
 let db,assets,dl,user,ed=false,R=[],tab='home',cm=new Date(),br='any',vc='Спрайты';
 function toast(m){const t=$('#toast');($('#dlg').open?$('#dlg'):document.body).append(t);t.textContent=m;t.style.opacity=1;clearTimeout(toast.h);toast.h=setTimeout(()=>t.style.opacity=0,2600)}
 const tm={};
-function save(k){if(!me)return;if(k=='users')ensId();clearTimeout(tm[k]);tm[k]=setTimeout(async()=>{const v=JSON.stringify(S[k]);try{if(db)await db.doc('site/'+k).set({v});else localStorage.setItem('sn_'+k,v)}catch{toast('Не удалось сохранить')}},500)}
+const PN={};
+function save(k){if(!me)return;if(k=='users')ensId();clearTimeout(tm[k]);PN[k]=1;tm[k]=setTimeout(async()=>{try{
+  if(db&&k=='users'){try{const d=await db.doc('site/users').get();if(d.exists)JSON.parse(d.data().v).forEach(r=>{if(!S.users.some(u=>u.n==r.n))S.users.push(r)})}catch{}}
+  const v=JSON.stringify(S[k]);if(db)await db.doc('site/'+k).set({v});else localStorage.setItem('sn_'+k,v)}catch{toast('Не удалось сохранить')}delete PN[k]},500)}
 /* ============================================================
    8. ЗАПУСК САЙТА  [КОД: старт] — загрузка данных и первая отрисовка
    ============================================================ */
 async function init(){
  [db,assets,dl,user]=await Promise.all(['db','assets','downloads','user'].map(U));
+ db=await fbInit();assets=null;if(!db)setTimeout(()=>toast('Нет связи с базой: данные сохраняются только в этом браузере'),1500);
  setMe();
  for(const k of Object.keys(S)){let v;try{if(db){const d=await db.doc('site/'+k).get();if(d.exists)v=JSON.parse(d.data().v)}else v=JSON.parse(localStorage.getItem('sn_'+k))}catch{}if(v!=null)S[k]=v}
  sync();if(me){const u=S.users.find(x=>x.n==me.n),t=dk(Date.now());if(u&&u.vl!=t){u.vl=t;u.vc=(u.vc||0)+1;save('users')}}
@@ -772,10 +746,12 @@ arx(b){if(!me)return toast('Войдите, чтобы реагировать');
 const gda=u=>{const m=String(u||'').match(/drive\.google\.com\/file\/(?:u\/\d+\/)?d\/([\w-]+)|drive\.google\.com\/(?:open|uc)\?(?:[^#]*&)?id=([\w-]+)|docs\.google\.com\/uc\?(?:[^#]*&)?id=([\w-]+)/),id=m&&(m[1]||m[2]||m[3]);return id?'https://drive.google.com/uc?export=download&id='+id:u};
 au().addEventListener('error',()=>{const t=Q[qi],a=au(),m=t&&String(t.src).match(/(?:\/d\/|[?&]id=)([\w-]+)/);if(!t)return;if(m&&/google/.test(t.src)&&a.dataset.f==0){a.dataset.f=1;a.src='https://docs.google.com/uc?export=download&id='+m[1];a.play().catch(()=>{});return}toast('Трек не открылся: на Google Диске нужен доступ «у кого есть ссылка», ссылка на файл (не на папку), mp3 лучше до 25 МБ')});
 
+/* [КОД: онлайн] раз в 20 секунд подтягиваем чужие изменения, если вы сейчас ничего не пишете */
+async function poll(){if(!db||document.hidden||Object.keys(PN).length||$('#dlg').open)return;const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;
+ let ch=0;for(const k of Object.keys(S)){try{const d=await db.doc('site/'+k).get();if(d.exists&&d.data().v!==JSON.stringify(S[k])){S[k]=JSON.parse(d.data().v);ch=1}}catch{}}
+ const o=JSON.stringify(R);await loadR();if(JSON.stringify(R)!==o)ch=1;if(ch){sync();theme();render()}}
+setInterval(poll,20000);
 init();
 </script>
 </body>
 </html>
-
-
-databaseURL: "https://star-novel-6c2f2-default-rtdb.firebaseio.com"
